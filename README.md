@@ -6,6 +6,7 @@ colorTo: indigo
 sdk: streamlit
 app_file: app.py
 pinned: false
+target_port: 8501
 ---
 
 # Echo Archive
