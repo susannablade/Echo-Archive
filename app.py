@@ -5,6 +5,7 @@ import requests
 import streamlit as st
 import google.generativeai as genai
 import resend
+load_dotenv() 
 
 # ---------------------------
 # CONFIG
