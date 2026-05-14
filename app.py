@@ -3,24 +3,39 @@ import random
 import re
 import requests
 import streamlit as st
-import google.generativeai as genai  # Updated import
+import google.generativeai as genai
 import resend
 
 # ---------------------------
 # CONFIG
 # ---------------------------
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-RESEND_KEY = os.environ.get("RESEND_API_KEY")
+GEMINI_KEY = os.environ.get(
+    "GEMINI_API_KEY"
+)
+
+RESEND_KEY = os.environ.get(
+    "RESEND_API_KEY"
+)
 
 if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
+
+    genai.configure(
+        api_key=GEMINI_KEY
+    )
+
 else:
-    st.error("Gemini API Key missing! Check HF Secrets.")
+
+    st.error(
+        "Missing GEMINI_API_KEY."
+    )
 
 if RESEND_KEY:
+
     resend.api_key = RESEND_KEY
 
-ARTIC_API_URL = "https://api.artic.edu/api/v1/artworks"
+ARTIC_API_URL = (
+    "https://api.artic.edu/api/v1/artworks"
+)
 
 session = requests.Session()
 
@@ -31,7 +46,6 @@ DEFAULT_STATE = {
     "artwork": None,
     "description": "",
     "interpretation": "",
-    "reflection_text": "",
     "user_input": "",
     "show_email_input": False
 }
@@ -64,9 +78,12 @@ def ask_gemini(prompt):
 
     try:
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+        model = genai.GenerativeModel(
+            "gemini-1.5-flash"
+        )
+
+        response = model.generate_content(
+            prompt
         )
 
         if (
@@ -91,7 +108,10 @@ def get_random_artwork(retries=5):
 
     for _ in range(retries):
 
-        random_page = random.randint(1, 500)
+        random_page = random.randint(
+            1,
+            500
+        )
 
         try:
 
@@ -101,12 +121,13 @@ def get_random_artwork(retries=5):
                     "page": random_page,
                     "limit": 25,
                     "fields": (
-                        "id,title,image_id,artist_title,"
-                        "artist_display,date_display,"
-                        "medium_display,dimensions,"
+                        "id,title,image_id,"
+                        "artist_title,artist_display,"
+                        "date_display,medium_display,"
                         "description,classification_title,"
                         "style_title,theme_titles,"
-                        "provenance_text,exhibition_history"
+                        "provenance_text,"
+                        "exhibition_history"
                     )
                 },
                 timeout=10
@@ -129,68 +150,75 @@ def get_random_artwork(retries=5):
 
         for obj in data:
 
-            image_id = obj.get("image_id")
+            image_id = obj.get(
+                "image_id"
+            )
 
             if not image_id:
-                continue
 
-            has_context = any([
-                obj.get("description"),
-                obj.get("provenance_text"),
-                obj.get("artist_display"),
-                obj.get("exhibition_history")
-            ])
-
-            if not has_context:
                 continue
 
             artworks.append({
-                "id": obj.get("id"),
-                "title": obj.get("title") or "Untitled",
+
+                "title": (
+                    obj.get("title")
+                    or "Untitled"
+                ),
+
                 "artist": (
                     obj.get("artist_title")
                     or "Unknown Artist"
                 ),
+
                 "artist_display": (
                     obj.get("artist_display")
                     or ""
                 ),
+
                 "date": (
                     obj.get("date_display")
                     or "Unknown Date"
                 ),
+
                 "medium": (
                     obj.get("medium_display")
                     or "Unknown Medium"
                 ),
-                "dimensions": (
-                    obj.get("dimensions")
-                    or ""
-                ),
+
                 "description": (
                     obj.get("description")
                     or ""
                 ),
+
                 "classification": (
-                    obj.get("classification_title")
+                    obj.get(
+                        "classification_title"
+                    )
                     or ""
                 ),
+
                 "style": (
                     obj.get("style_title")
                     or ""
                 ),
+
                 "themes": (
                     obj.get("theme_titles")
                     or []
                 ),
+
                 "provenance": (
                     obj.get("provenance_text")
                     or ""
                 ),
+
                 "exhibition_history": (
-                    obj.get("exhibition_history")
+                    obj.get(
+                        "exhibition_history"
+                    )
                     or ""
                 ),
+
                 "image": build_image_url(
                     image_id
                 )
@@ -211,28 +239,17 @@ def get_random_artwork(retries=5):
 def generate_description(artwork):
 
     prompt = f"""
-    You are writing a curatorial description
-    for a museum visitor.
+    You are writing a restrained,
+    literary museum reflection.
 
-    Help the user emotionally and historically
-    connect to the artwork.
-
-    Artwork Information:
-
+    Artwork:
     Title: {artwork['title']}
     Artist: {artwork['artist']}
-    Artist Bio: {artwork['artist_display']}
     Date: {artwork['date']}
     Medium: {artwork['medium']}
-    Classification: {artwork['classification']}
-    Style: {artwork['style']}
 
-    Themes:
-    {
-        ', '.join(artwork['themes'])
-        if artwork['themes']
-        else 'None listed'
-    }
+    Artist Context:
+    {artwork['artist_display']}
 
     Museum Description:
     {artwork['description']}
@@ -243,19 +260,16 @@ def generate_description(artwork):
     Exhibition History:
     {artwork['exhibition_history']}
 
-    Write a rich atmospheric description
-    in 4-5 sentences.
+    Write 4-5 atmospheric sentences.
 
-    Guidelines:
-    - Treat the artwork as emotionally alive
-    - Connect material, history, and mood
-    - Avoid academic stiffness
-    - Be restrained and literary
-
-    Output only the description.
+    Avoid academic stiffness.
+    Avoid mystical language.
+    Keep it emotionally observant.
     """
 
-    return ask_gemini(prompt)
+    return ask_gemini(
+        prompt
+    )
 
 
 # ---------------------------
@@ -276,59 +290,19 @@ def generate_interpretation(
     {artwork['title']}
     by {artwork['artist']}
 
-    Curatorial Description:
+    Description:
     "{description}"
 
-    Write a reflective interpretation
-    in 5-6 sentences.
+    Write a thoughtful reflection
+    in 4-5 sentences.
 
-    Guidelines:
-    - Avoid generic spiritual language
-    - Be emotionally observant
-    - Do not summarize literally
-    - Sound thoughtful and restrained
-
-    Output only the interpretation.
+    Avoid spiritual clichés.
+    Be emotionally grounded.
     """
 
-    return ask_gemini(prompt)
-
-
-# ---------------------------
-# USER REFLECTION
-# ---------------------------
-def generate_user_reflection(
-    user_input,
-    artwork,
-    interpretation
-):
-
-    prompt = f"""
-    Help the user write a personal reflection
-    inspired by this artwork encounter.
-
-    User Thought:
-    "{user_input}"
-
-    Artwork:
-    {artwork['title']}
-    by {artwork['artist']}
-
-    Interpretation:
-    "{interpretation}"
-
-    Write a short first-person reflection.
-
-    Guidelines:
-    - Sound intimate and grounded
-    - Write like a journal entry
-    - Avoid sounding mystical
-    - Keep emotional specificity
-
-    Output only the reflection.
-    """
-
-    return ask_gemini(prompt)
+    return ask_gemini(
+        prompt
+    )
 
 
 # ---------------------------
@@ -338,8 +312,7 @@ def send_archive_email(
     recipient_email,
     artwork,
     description,
-    interpretation,
-    reflection
+    interpretation
 ):
 
     subject = (
@@ -348,27 +321,21 @@ def send_archive_email(
     )
 
     html_body = f"""
-    <h2>Echo Archive — Reflection Record</h2>
+    <h2>Echo Archive</h2>
 
-    <h3>Artwork</h3>
+    <h3>{artwork['title']}</h3>
 
     <p>
-    <strong>{artwork['title']}</strong><br>
     {artwork['artist']}<br>
     {artwork['date']}<br>
     {artwork['medium']}
     </p>
 
-    <h3>Curatorial Description</h3>
+    <h3>Description</h3>
     <p>{description}</p>
 
-    <h3>Interpretation</h3>
+    <h3>Reflection</h3>
     <p>{interpretation}</p>
-
-    <h3>Personal Reflection</h3>
-    <p>{reflection}</p>
-
-    <h3>Artwork Image</h3>
 
     <p>
     <a href="{artwork['image']}">
@@ -380,12 +347,16 @@ def send_archive_email(
     try:
 
         resend.Emails.send({
+
             "from": (
                 "Echo Archive "
                 "<onboarding@resend.dev>"
             ),
+
             "to": recipient_email,
+
             "subject": subject,
+
             "html": html_body
         })
 
@@ -401,25 +372,33 @@ def send_archive_email(
 # ---------------------------
 # UI
 # ---------------------------
-st.title("Echo Archive")
+st.title(
+    "Echo Archive"
+)
 
 st.write(
     "A quiet experiment in reflection. "
-    "An artwork is drawn from the archive "
-    "of the Art Institute of Chicago."
+    "An artwork is drawn from the "
+    "Art Institute of Chicago archive."
 )
 
 # ---------------------------
-# INPUT FORM
+# INPUT
 # ---------------------------
-with st.form("archive_form"):
+with st.form(
+    "archive_form"
+):
 
     user_input = st.text_area(
+
         "What is circling your mind right now?",
+
         placeholder=(
-            "A thought, concept, memory or feeling..."
+            "A thought, memory, "
+            "emotion or question..."
         ),
-        height=80
+
+        height=100
     )
 
     submitted = st.form_submit_button(
@@ -427,7 +406,7 @@ with st.form("archive_form"):
     )
 
 # ---------------------------
-# SUBMISSION
+# SUBMIT
 # ---------------------------
 if submitted:
 
@@ -445,7 +424,6 @@ if submitted:
 
     st.session_state.description = ""
     st.session_state.interpretation = ""
-    st.session_state.reflection_text = ""
     st.session_state.show_email_input = False
 
     with st.spinner(
@@ -498,7 +476,9 @@ if st.session_state.artwork:
         ):
 
             st.session_state.description = (
-                generate_description(art)
+                generate_description(
+                    art
+                )
             )
 
     with st.expander(
@@ -510,20 +490,10 @@ if st.session_state.artwork:
             st.session_state.description
         )
 
-        if art["provenance"]:
-
-            st.markdown(
-                "#### Provenance"
-            )
-
-            st.write(
-                art["provenance"]
-            )
-
     st.divider()
 
     # ---------------------------
-    # INTERPRET BUTTON
+    # INTERPRET
     # ---------------------------
     interpret = st.button(
         "Reflect on this artwork"
@@ -546,9 +516,6 @@ if st.session_state.artwork:
                 )
             )
 
-    # ---------------------------
-    # DISPLAY INTERPRETATION
-    # ---------------------------
     if st.session_state.interpretation:
 
         st.markdown(
@@ -562,57 +529,10 @@ if st.session_state.artwork:
     st.divider()
 
     # ---------------------------
-    # USER REFLECTION
-    # ---------------------------
-    st.markdown(
-        "### Your Reflection"
-    )
-
-    reflection_text = st.text_area(
-        "Write your response to this encounter.",
-        value=(
-            st.session_state.reflection_text
-        ),
-        height=140,
-        placeholder=(
-            "What does this artwork leave behind?"
-        )
-    )
-
-    st.session_state.reflection_text = (
-        reflection_text
-    )
-
-    # ---------------------------
-    # AI ASSIST BUTTON
-    # ---------------------------
-    assist = st.button(
-        "Help me articulate this"
-    )
-
-    if assist:
-
-        with st.spinner(
-            "Finding the language..."
-        ):
-
-            st.session_state.reflection_text = (
-                generate_user_reflection(
-                    st.session_state.user_input,
-                    art,
-                    st.session_state.interpretation
-                )
-            )
-
-        st.rerun()
-
-    st.divider()
-
-    # ---------------------------
-    # EMAIL ARCHIVE
+    # EMAIL
     # ---------------------------
     archive = st.button(
-        "Send me an email to archive this reflection"
+        "Email me this reflection"
     )
 
     if archive:
@@ -626,7 +546,7 @@ if st.session_state.artwork:
         )
 
         send = st.button(
-            "Archive Reflection"
+            "Send Archive"
         )
 
         if send:
@@ -642,7 +562,7 @@ if st.session_state.artwork:
             else:
 
                 with st.spinner(
-                    "Archiving reflection..."
+                    "Sending archive..."
                 ):
 
                     success = send_archive_email(
@@ -653,16 +573,13 @@ if st.session_state.artwork:
                         ),
                         interpretation=(
                             st.session_state.interpretation
-                        ),
-                        reflection=(
-                            st.session_state.reflection_text
                         )
                     )
 
                 if success:
 
                     st.success(
-                        "Your reflection has been archived."
+                        "Reflection archived."
                     )
 
                 else:
