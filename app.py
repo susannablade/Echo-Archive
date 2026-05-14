@@ -3,26 +3,24 @@ import random
 import re
 import requests
 import streamlit as st
-from dotenv import load_dotenv
-from google import genai
+import google.generativeai as genai  # Updated import
 import resend
 
 # ---------------------------
 # CONFIG
 # ---------------------------
-load_dotenv()
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+RESEND_KEY = os.environ.get("RESEND_API_KEY")
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
+else:
+    st.error("Gemini API Key missing! Check HF Secrets.")
 
-resend.api_key = os.getenv(
-    "RESEND_API_KEY"
-)
+if RESEND_KEY:
+    resend.api_key = RESEND_KEY
 
-ARTIC_API_URL = (
-    "https://api.artic.edu/api/v1/artworks"
-)
+ARTIC_API_URL = "https://api.artic.edu/api/v1/artworks"
 
 session = requests.Session()
 
