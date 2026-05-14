@@ -1,3 +1,13 @@
+---
+title: Echo Archive
+emoji: 🎨
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+app_file: app.py
+pinned: false
+---
+
 # Echo Archive
 
 Echo Archive is an AI-powered reflective archive designed to help users connect with artwork they may have never explored before.
